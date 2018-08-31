@@ -136,7 +136,7 @@ const crashed = (mesh, meshItems, ck) => {
         }
     })
 }
-
+// https://willbean.github.io/2017/07/10/three-js-crash-detection/
 
 const init = () => {
     scene = new THREE.Scene()
@@ -160,9 +160,6 @@ const init = () => {
     mesh.position.y += 1
     mesh.receiveShadow = true
     mesh.castShadow = true
-
-
-
 
    // loader models
    for( var _key in models ){
@@ -308,14 +305,25 @@ const animate = () => {
         camera.position.z += -Math.cos(camera.rotation.y - Math.PI/2) * player.speed
     }
 
+
     // left
     if(keyboard[37]){
         camera.rotation.y -= player.turnSpeed
+        console.log(camera.rotation.x)
+    }
+     // top
+    if(keyboard[38]){
+        camera.rotation.x -= player.turnSpeed
     }
 
     // rigth
     if(keyboard[39]){
         camera.rotation.y += player.turnSpeed
+    }
+
+     // down
+    if(keyboard[40]){
+        camera.rotation.x += player.turnSpeed
     }
 
     // spacebar

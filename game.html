@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Document</title>
+    <style>
+        body { overflow: hidden; margin: 0; }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/92/three.min.js"></script>
+</head>
+<body></body>
+
+<script>
+
+    let scene = new THREE.Scene()
+    let camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 1, 1000)
+    let renderer = new THREE.WebGLRenderer({ antialias: true })
+
+    let keypress = []
+
+    let geometryMeshs = {
+        rootSquare: new THREE.Mesh(new THREE.BoxGeometry(100, 100, 100, 10, 10, 10), new THREE.MeshBasicMaterial({color: "gray",wireframe: true}))
+    }
+
+    document.addEventListener('keydown', (e) => {keypress[e.keyCode] = true})
+    document.addEventListener('keyup', (e) => {keypress[e.keyCode] = false})
+
+    renderer.setSize(window.innerWidth, window.innerHeight)
+    document.body.appendChild( renderer.domElement )
+
+    geometryMeshs['rootSquare'].geometry.translate(0, 50, 0)
+    camera.position.set(0, 10, 20)
+
+    scene.add(geometryMeshs['rootSquare'])
+
+    // const camHolder = new THREE.Group()
+    // camHolder.add(camera)
+    // camHolder.position.set(0, 10, 20)
+    // scene.add(camHolder)
+
+
+
+    renderer.render(scene, camera)
+
+
+
+</script>
+
+</html>
