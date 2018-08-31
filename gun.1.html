@@ -79,7 +79,26 @@ let meshs = {}
 let bullets = []
 
 const onResourcesLoaded = () => {
+    meshs['tent1'] = models.tent.mesh.clone()
+    meshs['tent2'] = models.tent.mesh.clone()
+    meshs['campfire1'] = models.campfire.mesh.clone()
+    meshs['campfire2'] = models.campfire.mesh.clone()
+    meshs['pirateship'] = models.pirateship.mesh.clone()
     meshs['playerWeapen'] = models.uzi.mesh.clone()
+
+    meshs['tent1'].position.set(-5, 0, 4)
+    meshs['tent2'].position.set(-8, 0, 4)
+    scene.add(meshs['tent1'])
+    scene.add(meshs['tent2'])
+
+    meshs['campfire1'].position.set(-5, 0, 1)
+    meshs['campfire2'].position.set(-8, 0, 1)
+    scene.add(meshs['campfire1'])
+    scene.add(meshs['campfire2'])
+
+    meshs['pirateship'].position.set(-11, 0, 0)
+    scene.add(meshs['pirateship'])
+
     meshs['playerWeapen'].position.set(0,2,0)
     meshs['playerWeapen'].scale.set(10, 10, 10)
     scene.add(meshs['playerWeapen'])
@@ -122,22 +141,6 @@ crateTexture= new textureLoader.load('./3crates/crate0/crate0_diffuse.png')
 crateBump = new textureLoader.load('./3crates/crate0/crate0_bump.png')
 crateNormal = new textureLoader.load('./3crates/crate0/crate0_normal.png')
 
-const crashed = (mesh, meshItems, ck) => {
-    const originPoint = mesh.position.clone()
-
-    mesh.geometry.vertices.forEach((el, idx) => {
-        const localVertex = el.clone()
-        const globaVertex = localVertex.applyMatrix4(mesh.matrix)
-        const directionVector = globaVertex.sub(mesh.position)
-        const ray = new THREE.Raycaster(originPoint, directionVector.clone().normalize())
-        const collisionResults = ray.intersectObjects(meshItems)
-        if(collisionResults.length > 0 && collisionResults[0].distance < directionVector.length() + 1.2){
-            ck()
-        }
-    })
-}
-
-
 const init = () => {
     scene = new THREE.Scene()
     camera = new THREE.PerspectiveCamera(90, 1200/720, 0.1, 1000)
@@ -160,9 +163,6 @@ const init = () => {
     mesh.position.y += 1
     mesh.receiveShadow = true
     mesh.castShadow = true
-
-
-
 
    // loader models
    for( var _key in models ){
@@ -273,15 +273,13 @@ const animate = () => {
 
     for(let idx =0; idx < bullets.length; idx++){
         if (bullets[idx] === undefined) continue
+        console.log(bullets[idx].position)
 
         if (bullets[idx].alive === false){
             bullets.splice(idx, 1)
             continue
         }
         bullets[idx].position.add(bullets[idx].velocity)
-        crashed(mesh, [bullets[idx]], ()=> {
-            scene.remove(mesh)
-        })
     }
 
     // w
@@ -321,7 +319,7 @@ const animate = () => {
     // spacebar
     if(keyboard[32] && player.canShoot <= 0){
         let bullet = new THREE.Mesh(
-            new THREE.SphereGeometry(0.5, 8, 8),
+            new THREE.SphereGeometry(0.05, 8, 8),
             new THREE.MeshBasicMaterial({color: 0xffffff})
         )
         bullet.alive = true
