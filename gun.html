@@ -1,0 +1,372 @@
+<html lang="en">
+<!DOCTYPE html>
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Document</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tracking.js/1.1.3/tracking.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/three.js/95/three.min.js"></script>
+    <script src="https://threejs.org/examples/js/loaders/OBJLoader.js"></script>
+    <script src="https://threejs.org/examples/js/loaders/MTLLoader.js"></script>
+    <!-- <script src="https://webrtc.github.io/adapter/adapter-latest.js"></script> -->
+
+    <style>
+        #video,
+        #canvas {
+            position: absolute;
+        }
+
+        #video {
+            z-index: -1;
+        }
+    </style>
+</head>
+
+<body>
+
+
+</body>
+
+<script>
+
+//
+// event
+//
+
+let keyboard = {}
+let player = { height: 1.8, speed: 0.2, turnSpeed: Math.PI*0.02, canShoot: 0 }
+
+const keyDown = (e) => { keyboard[e.keyCode] = true }
+const keyUp = (e) => { keyboard[e.keyCode] = false }
+
+window.addEventListener('keydown', keyDown)
+window.addEventListener('keyup', keyUp)
+
+
+//
+// module
+//
+
+let models = {
+    tent: {
+        obj: './models/Tent_Poles_01.obj',
+        mtl: './models/Tent_Poles_01.mtl',
+        mesh: null
+    },
+    campfire: {
+        obj: './models/Campfire_01.obj',
+        mtl: './models/Campfire_01.mtl',
+        mesh: null
+    },
+    pirateship: {
+        obj: './models/Pirateship.obj',
+        mtl: './models/Pirateship.mtl',
+        mesh: null
+    },
+    uzi: {
+        obj: './models/uziGold.obj',
+        mtl: './models/uziGold.mtl',
+        mesh: null,
+        castShadow: true
+    }
+
+}
+
+let meshs = {}
+
+let bullets = []
+
+const onResourcesLoaded = () => {
+    meshs['tent1'] = models.tent.mesh.clone()
+    meshs['tent2'] = models.tent.mesh.clone()
+    meshs['campfire1'] = models.campfire.mesh.clone()
+    meshs['campfire2'] = models.campfire.mesh.clone()
+    meshs['pirateship'] = models.pirateship.mesh.clone()
+    meshs['playerWeapen'] = models.uzi.mesh.clone()
+
+    meshs['tent1'].position.set(-5, 0, 4)
+    meshs['tent2'].position.set(-8, 0, 4)
+    scene.add(meshs['tent1'])
+    scene.add(meshs['tent2'])
+
+    meshs['campfire1'].position.set(-5, 0, 1)
+    meshs['campfire2'].position.set(-8, 0, 1)
+    scene.add(meshs['campfire1'])
+    scene.add(meshs['campfire2'])
+
+    meshs['pirateship'].position.set(-11, 0, 0)
+    scene.add(meshs['pirateship'])
+
+    meshs['playerWeapen'].position.set(0,2,0)
+    meshs['playerWeapen'].scale.set(10, 10, 10)
+    scene.add(meshs['playerWeapen'])
+}
+
+//
+// loading screen
+//
+
+let loadingScreen = {
+    scene: new THREE.Scene(),
+    camera: new THREE.PerspectiveCamera(90, 1200/720, 0.1, 1000),
+    box: new THREE.Mesh(
+        new THREE.BoxGeometry(0.5, 0.5, 0.5),
+        new THREE.MeshBasicMaterial({color: 0x4444ff})
+    )
+}
+
+let RESOURCE_LOADED = false
+let loadingManager = new THREE.LoadingManager()
+
+loadingManager.onLoad = () => {
+    RESOURCE_LOADED = true
+   onResourcesLoaded()
+}
+//
+// three
+//
+
+let scene, camera, renderer, mesh, clock
+let ambientLight
+let meshFloor
+let textureLoader
+let crate, crateTexture, crateBump, crateNormal
+let light
+
+textureLoader = new THREE.TextureLoader(loadingManager)
+
+crateTexture= new textureLoader.load('./3crates/crate0/crate0_diffuse.png')
+crateBump = new textureLoader.load('./3crates/crate0/crate0_bump.png')
+crateNormal = new textureLoader.load('./3crates/crate0/crate0_normal.png')
+
+const init = () => {
+    scene = new THREE.Scene()
+    camera = new THREE.PerspectiveCamera(90, 1200/720, 0.1, 1000)
+    clock = new THREE.Clock()
+
+    loadingScreen.box.position.set(0, 0, 5)
+    loadingScreen.camera.lookAt(loadingScreen.box.position)
+    loadingScreen.scene.add(loadingScreen.box)
+
+    camera.position.set(0, player.height, -5)
+    camera.lookAt(new THREE.Vector3(0, player.height, 0))
+
+    // mesh
+
+    mesh = new THREE.Mesh(
+        new THREE.BoxGeometry(1, 1, 1),
+        new THREE.MeshPhongMaterial({color: 0Xff4444, wireframe: false})
+    )
+
+    mesh.position.y += 1
+    mesh.receiveShadow = true
+    mesh.castShadow = true
+
+   // loader models
+   for( var _key in models ){
+		(function(key){
+
+			var mtlLoader = new THREE.MTLLoader(loadingManager);
+			mtlLoader.load(models[key].mtl, function(materials){
+				materials.preload();
+
+				var objLoader = new THREE.OBJLoader(loadingManager);
+
+				objLoader.setMaterials(materials);
+				objLoader.load(models[key].obj, function(mesh){
+
+					mesh.traverse(function(node){
+						if( node instanceof THREE.Mesh ){
+                            if(models[key].castShadow){
+                                node.castShadow = true;
+                            }
+							node.receiveShadow = true;
+						}
+					});
+					models[key].mesh = mesh;
+
+				});
+			});
+
+		})(_key);
+	}
+
+
+    // crate
+    crate = new THREE.Mesh(
+        new THREE.BoxGeometry(3,3,3),
+        new THREE.MeshPhongMaterial({
+            color: 0xffffff,
+            map: crateTexture,
+            bumpMap: crateBump,
+            normalMap: crateNormal
+        })
+    )
+
+    crate.position.set(2.5, 3/2, 2.5)
+    crate.receiveShadow = true
+    crate.castShadow = true
+
+    // floor
+
+    meshFloor = new THREE.Mesh(
+        new THREE.PlaneGeometry(20, 20, 10, 10),
+        new THREE.MeshPhongMaterial({color: 0xffffff, wireframe: false})
+    )
+
+    meshFloor.rotation.x -= Math.PI /2
+    meshFloor.receiveShadow = true
+
+    // light
+
+    ambientLight = new THREE.AmbientLight(0xffffff, 0.5)
+
+    light = new THREE.PointLight(0xffffff, 0.5,  18)
+    light.position.set(-3, 6, -3)
+    light.castShadow = true
+    light.shadow.camera.near = 0.1
+    light.shadow.camera.far = 25
+
+
+    scene.add(mesh)
+    scene.add(crate)
+    scene.add(meshFloor)
+    scene.add(ambientLight)
+    scene.add(light)
+
+
+
+    renderer = new THREE.WebGLRenderer()
+    renderer.setSize(1200, 720)
+
+    renderer.shadowMap.enabled = true
+    renderer.shadowMap.type = THREE.BasicShadowMap
+
+
+    document.body.appendChild(renderer.domElement)
+
+    animate()
+}
+
+const animate = () => {
+
+    if( !RESOURCE_LOADED ) {
+        requestAnimationFrame(animate)
+
+        loadingScreen.box.position.x -= 0.05
+        if( loadingScreen.box.position.x < -10 ) loadingScreen.box.position.x = 10
+        loadingScreen.box.position.y = Math.sin(loadingScreen.box.position.x)
+
+        renderer.render(loadingScreen.scene, loadingScreen.camera)
+        return
+    }
+
+    requestAnimationFrame(animate)
+
+    let time = Date.now() * 0.0005
+    let delata = clock.getDelta()
+
+    mesh.rotation.x += 0.01
+    mesh.rotation.y += 0.02
+
+    for(let idx =0; idx < bullets.length; idx++){
+        if (bullets[idx] === undefined) continue
+        if (bullets[idx].alive === false){
+            bullets.splice(idx, 1)
+            continue
+        }
+        bullets[idx].position.add(bullets[idx].velocity)
+    }
+
+    // w
+    if(keyboard[87]){
+        camera.position.x -= Math.sin(camera.rotation.y) * player.speed
+        camera.position.z -= -Math.cos(camera.rotation.y) * player.speed
+    }
+
+    // s
+    if(keyboard[83]){
+        camera.position.x += Math.sin(camera.rotation.y) * player.speed
+        camera.position.z += -Math.cos(camera.rotation.y) * player.speed
+    }
+
+    // a
+    if(keyboard[65]){
+        camera.position.x += Math.sin(camera.rotation.y + Math.PI/2) * player.speed
+        camera.position.z += -Math.cos(camera.rotation.y + Math.PI/2) * player.speed
+    }
+
+    // d
+    if(keyboard[68]){
+        camera.position.x += Math.sin(camera.rotation.y - Math.PI/2) * player.speed
+        camera.position.z += -Math.cos(camera.rotation.y - Math.PI/2) * player.speed
+    }
+
+    // left
+    if(keyboard[37]){
+        camera.rotation.y -= player.turnSpeed
+    }
+
+    // rigth
+    if(keyboard[39]){
+        camera.rotation.y += player.turnSpeed
+    }
+
+    // spacebar
+    if(keyboard[32] && player.canShoot <= 0){
+        let bullet = new THREE.Mesh(
+            new THREE.SphereGeometry(0.05, 8, 8),
+            new THREE.MeshBasicMaterial({color: 0xffffff})
+        )
+        bullet.alive = true
+
+        bullet.position.set(
+            meshs['playerWeapen'].position.x,
+            meshs['playerWeapen'].position.y + 0.2,
+            meshs['playerWeapen'].position.z,
+        )
+
+        bullet.velocity = new THREE.Vector3(
+            -Math.sin(camera.rotation.y),
+            0,
+            Math.cos(camera.rotation.y)
+        )
+
+        setTimeout(()=> {
+            bullet.alive = false
+            scene.remove(bullet)
+        }, 1000)
+
+        bullets.push(bullet)
+
+        scene.add(bullet)
+
+        player.canShoot = 10
+    }
+
+    if(player.canShoot > 0) player.canShoot -= 1
+
+    // weapen
+    meshs['playerWeapen'].position.set(
+        camera.position.x - Math.sin(camera.rotation.y + Math.PI/6 ) * 0.75,
+        camera.position.y - 0.5 + Math.sin(time * 4 + camera.position.x + camera.position.y) * 0.01,
+        camera.position.z + Math.cos(camera.rotation.y + Math.PI/6) * 0.75,
+    )
+
+    meshs['playerWeapen'].rotation.set(
+        camera.rotation.x,
+        camera.rotation.y - Math.PI,
+        camera.rotation.z
+    )
+
+
+    renderer.render(scene, camera)
+}
+
+window.onload = init;
+
+</script>
+
+</html>
