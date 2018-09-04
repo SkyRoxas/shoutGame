@@ -14,17 +14,20 @@
 
 <script>
 
-    // https://jsfiddle.net/prisoner849/keLkfo5n/
-
     let scene = new THREE.Scene()
     let camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 1, 1000)
     let renderer = new THREE.WebGLRenderer({ antialias: true })
 
     let keypress = []
 
-    let geometryMeshs = {
+    let geomMeshs = {
         rootSquare: new THREE.Mesh(new THREE.BoxGeometry(100, 100, 100, 10, 10, 10), new THREE.MeshBasicMaterial({color: "gray",wireframe: true}))
     }
+
+    const speedTrans = 40
+    const speedRot = THREE.Math.degToRad(45)
+    const clock = new THREE.Clock()
+    let delta = 0
 
     document.addEventListener('keydown', (e) => {keypress[e.keyCode] = true})
     document.addEventListener('keyup', (e) => {keypress[e.keyCode] = false})
@@ -32,16 +35,33 @@
     renderer.setSize(window.innerWidth, window.innerHeight)
     document.body.appendChild( renderer.domElement )
 
-    geometryMeshs['rootSquare'].geometry.translate(0, 50, 0)
-    camera.position.set(0, 10, 20)
+    geomMeshs['rootSquare'].geometry.translate(0, 50, 0)
+    scene.add(geomMeshs['rootSquare'])
 
-    scene.add(geometryMeshs['rootSquare'])
+    const player = new THREE.Group()
+    player.add(camera)
+    player.position.set(0, 10, 20)
+    scene.add(player)
 
-    // const camHolder = new THREE.Group()
-    // camHolder.add(camera)
-    // camHolder.position.set(0, 10, 20)
-    // scene.add(camHolder)
+    render()
 
+    function render() {
+
+        // look rotation
+        if(keypress[37]) player.rotateY(speedRot * delta) // left
+        if(keypress[39]) player.rotateY(-speedRot * delta) // right
+        if(keypress[38]) camera.rotation.x += speedRot * delta // up
+        if(keypress[40]) camera.rotation.x += -speedRot * delta // down
+
+        if(keypress[87]) player.translateZ(-speedTrans * delta) // w
+        if(keypress[83]) player.translateZ(speedTrans * delta) // s
+        if(keypress[65]) player.translateX(-speedTrans * delta) // a
+        if(keypress[68]) player.translateX(speedTrans * delta) // d
+
+        requestAnimationFrame(render)
+        delta = clock.getDelta()
+        renderer.render(scene, camera)
+    }
 
 
     renderer.render(scene, camera)
