@@ -17,56 +17,80 @@
     let scene = new THREE.Scene()
     let camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 1, 1000)
     let renderer = new THREE.WebGLRenderer({ antialias: true })
-
-    let keypress = []
+    let clock = new THREE.Clock()
 
     let geomMeshs = {
         rootSquare: new THREE.Mesh(new THREE.BoxGeometry(100, 100, 100, 10, 10, 10), new THREE.MeshBasicMaterial({color: "gray",wireframe: true}))
     }
 
-    const speedTrans = 40
-    const speedRot = THREE.Math.degToRad(45)
-    const clock = new THREE.Clock()
-    let delta = 0
-
+    let keypress = []
     document.addEventListener('keydown', (e) => {keypress[e.keyCode] = true})
     document.addEventListener('keyup', (e) => {keypress[e.keyCode] = false})
+
+    class Player {
+        constructor(opt = {}){
+            this.group = opt.group || new THREE.Group()
+
+            // option
+            this.speed = opt.speed || 40
+            this.turnDeg = opt.turnDeg ? THREE.Math.degToRad(opt.turnDeg) : THREE.Math.degToRad(45)
+
+            // control
+            this.keyUp = opt.keyUp || 38
+            this.keyDown = opt.keyDown || 40
+            this.keyLeft = opt.keyLeft || 37
+            this.keyRight = opt.keyRight || 39
+            this.keyTurnUp = opt.keyTurnUp || 87
+            this.keyTurnDown = opt.keyTurnDown || 83
+            this.keyTurnLeft = opt.keyTurnLeft || 65
+            this.keyTurnRight = opt.keyTurnRight || 68
+        }
+
+        init() {
+            const {group} = this
+            group.add(camera)
+            group.position.set(0, 10, 20)
+            scene.add(group)
+        }
+
+        control(delta) {
+            const {keyUp, keyDown, keyLeft, keyRight, keyTurnUp, keyTurnDown, keyTurnLeft, keyTurnRight} = this
+            const {speed, turnDeg} = this
+            const {group} = this
+
+            // move eyes
+            if(keypress[keyLeft]) group.rotateY(turnDeg * delta) // left
+            if(keypress[keyRight]) group.rotateY(-turnDeg * delta) // right
+            if(keypress[keyUp]) camera.rotation.x += turnDeg * delta // up
+            if(keypress[keyDown]) camera.rotation.x += -turnDeg * delta // down
+
+            // move position
+            if(keypress[keyTurnUp]) group.translateZ(-speed * delta) // w
+            if(keypress[keyTurnDown]) group.translateZ(speed * delta) // s
+            if(keypress[keyTurnLeft]) group.translateX(-speed * delta) // a
+            if(keypress[keyTurnRight]) group.translateX(speed * delta) // d
+        }
+    }
+
 
     renderer.setSize(window.innerWidth, window.innerHeight)
     document.body.appendChild( renderer.domElement )
 
+
+    // my source
+    const player1 = new Player()
+    player1.init()
+
     geomMeshs['rootSquare'].geometry.translate(0, 50, 0)
     scene.add(geomMeshs['rootSquare'])
 
-    const player = new THREE.Group()
-    player.add(camera)
-    player.position.set(0, 10, 20)
-    scene.add(player)
-
-    render()
-
-    function render() {
-
-        // look rotation
-        if(keypress[37]) player.rotateY(speedRot * delta) // left
-        if(keypress[39]) player.rotateY(-speedRot * delta) // right
-        if(keypress[38]) camera.rotation.x += speedRot * delta // up
-        if(keypress[40]) camera.rotation.x += -speedRot * delta // down
-
-        if(keypress[87]) player.translateZ(-speedTrans * delta) // w
-        if(keypress[83]) player.translateZ(speedTrans * delta) // s
-        if(keypress[65]) player.translateX(-speedTrans * delta) // a
-        if(keypress[68]) player.translateX(speedTrans * delta) // d
-
+    const render = () => {
         requestAnimationFrame(render)
-        delta = clock.getDelta()
+        player1.control(clock.getDelta())
         renderer.render(scene, camera)
     }
 
-
-    renderer.render(scene, camera)
-
-
+    render()
 
 </script>
 
