@@ -9,23 +9,60 @@
         body { overflow: hidden; margin: 0; }
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/92/three.min.js"></script>
+    <script src="https://threejs.org/examples/js/loaders/OBJLoader.js"></script>
+    <script src="https://threejs.org/examples/js/loaders/MTLLoader.js"></script>
 </head>
 <body></body>
 
 <script>
 
-    let scene = new THREE.Scene()
-    let camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 1, 1000)
-    let renderer = new THREE.WebGLRenderer({ antialias: true })
-    let clock = new THREE.Clock()
+    let width = 1280
+    let height = 720
 
-    let geomMeshs = {
-        rootSquare: new THREE.Mesh(new THREE.BoxGeometry(100, 100, 100, 10, 10, 10), new THREE.MeshBasicMaterial({color: "gray",wireframe: true}))
-    }
+    let scene = new THREE.Scene()
+    let camera = new THREE.PerspectiveCamera(60, width / height, 0.1, 1000)
+    let renderer = new THREE.WebGLRenderer({ antialias: true })
+    let ambientLight
+    let light
+    let clock = new THREE.Clock()
 
     let keypress = []
     document.addEventListener('keydown', (e) => {keypress[e.keyCode] = true})
     document.addEventListener('keyup', (e) => {keypress[e.keyCode] = false})
+
+    let meshs = {
+        rootSquare: new THREE.Mesh(new THREE.BoxGeometry(50, 25, 50, 10, 10, 10), new THREE.MeshBasicMaterial({color: "gray",wireframe: true})),
+        floor: new THREE.Mesh(new THREE.PlaneGeometry(50, 50, 10, 10), new THREE.MeshPhongMaterial({color: 0xffffff, wireframe: false})),
+        monster: new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial({color: 0xff0000, wireframe: false}))
+    }
+
+    let models = [
+        { name: 'uzi', obj: './models/uziGold.obj', mtl: './models/uziGold.mtl', mesh: null, castShadow: true }
+    ]
+
+    class ModelManger {
+        constructor(models){
+            this.models = models || []
+            this.meshs = []
+            this.manger = new THREE.LoadingManager()
+            this.loader(models)
+        }
+
+        loader(models){
+            this.models.forEach(model => {
+                let mtlLoader = new THREE.MTLLoader(this.manger)
+                let objLoader = new THREE.OBJLoader(this.manger)
+                mtlLoader.load(model.mtl, (mtl) => {
+                    mtl.preload()
+                    objLoader.setMaterials(mtl)
+                    objLoader.load(model.obj, (mesh) => {
+                      scene.add(mesh)
+                      this.meshs[model.name] = mesh
+                    })
+                })
+            })
+        }
+    }
 
     class Player {
         constructor(opt = {}){
@@ -33,7 +70,7 @@
 
             // option
             this.speed = opt.speed || 40
-            this.turnDeg = opt.turnDeg ? THREE.Math.degToRad(opt.turnDeg) : THREE.Math.degToRad(45)
+            this.turnDeg = opt.turnDeg ? THREE.Math.degToRad(opt.turnDeg) : THREE.Math.degToRad(80)
 
             // control
             this.keyUp = opt.keyUp || 38
@@ -49,7 +86,7 @@
         init() {
             const {group} = this
             group.add(camera)
-            group.position.set(0, 10, 20)
+            // group.position.set(0, 10, 20)
             scene.add(group)
         }
 
@@ -72,17 +109,63 @@
         }
     }
 
+    class Weapen {
+        constructor(opt = {}) {
+            this.playerMesh = opt.playerMesh
+            this.weapenMesh = opt.weapenMesh
+            this.speed = opt.speed || 10
+            this.cd = opt.cd || 10
+            this.init()
+            this.animate()
+        }
+        init() {
+            const {weapenMesh} = this
+            weapenMesh.position.set(0,2,0)
+            weapenMesh.scale.set(10, 10, 10)
+        }
 
-    renderer.setSize(window.innerWidth, window.innerHeight)
-    document.body.appendChild( renderer.domElement )
+        animate() {
+            const {weapenMesh} = this
 
+            const animate = () => {
+                requestAnimationFrame(animate)
+                weapenMesh.position.z = camera.position.z
+                // weapenMesh.position.set(
+                //     camera.position.x,
+                //     camera.position.y,
+                //     camera.position.z
+                // )
 
-    // my source
-    const player1 = new Player()
-    player1.init()
+                // weapenMesh.rotation.set(
+                //     camera.rotation.x,
+                //     camera.rotation.y,
+                //     camera.rotation.z
+                // )
 
-    geomMeshs['rootSquare'].geometry.translate(0, 50, 0)
-    scene.add(geomMeshs['rootSquare'])
+                weapenMesh.rotation.y += 0.1
+            }
+
+            animate()
+        }
+    }
+
+    class Monster {}
+
+    const init = () => {
+
+        ambientLight = new THREE.AmbientLight(0xffffff, 0.5)
+        scene.add(ambientLight)
+
+        light = new THREE.PointLight(0xffffff, 0.5,  18)
+        light.position.set(-3, 6, -3)
+        light.castShadow = true
+        light.shadow.camera.near = 0.1
+        light.shadow.camera.far = 25
+
+        camera.position.set(0, 5, -5)
+        renderer.setSize(width, height)
+        document.body.appendChild( renderer.domElement )
+    }
 
     const render = () => {
         requestAnimationFrame(render)
@@ -90,7 +173,42 @@
         renderer.render(scene, camera)
     }
 
+
+    // run start
+
+    let player1
+    let weapenLoader
+
+
+    init()
+
+    player1 = new Player()
+    player1.init()
+
+    weapenLoader = new ModelManger(models)
+
+    weapenLoader.manger.onLoad = () => {
+        let weapen1 = new Weapen({
+            playerMesh: player1.group,
+            weapenMesh: weapenLoader.meshs['uzi']
+        })
+    }
+
+
+
+    meshs['monster'].position.y += 3
+    scene.add(meshs['monster'])
+
+    meshs['floor'].rotation.x -= Math.PI /2
+    scene.add(meshs['floor'])
+
+    meshs['rootSquare'].translateY(12)
+    scene.add(meshs['rootSquare'])
+
     render()
+
+
+
 
 </script>
 
